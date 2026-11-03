@@ -1,5 +1,5 @@
 ---
-title: Chord & 6-Stem Audio Studio
+title: TapAsh-Studio
 emoji: 🎸
 colorFrom: indigo
 colorTo: purple
@@ -7,14 +7,15 @@ sdk: static
 pinned: false
 ---
 
-# Real-Time Chord Recognition, Scale/Pitch Transposition & 6-Stem Audio Separation Studio
+# TapAsh-Studio
 
-A full-stack AI audio engineering studio powered by **Meta Hybrid Transformer Demucs (`htdemucs_6s`)**, **Librosa Constant-Q Transform (`chroma_cqt`)**, **Krumhansl-Schmuckler Key Profiles**, and a **60fps Web Audio API** dark-mode interface (with a built-in 24/7 Cloud Web-DSP fallback engine).
+**TapAsh-Studio** — Real-Time Chord Recognition, Scale/Pitch Transposition & 6-Stem Audio Separation Studio powered by **Meta Hybrid Transformer Demucs (`htdemucs_6s`)**, **Librosa Constant-Q Transform (`chroma_cqt`)**, **Krumhansl-Schmuckler Key Profiles**, and a **60fps Web Audio API** dark-mode studio interface (with a built-in 24/7 Cloud Web-DSP engine).
 
 ## Live Links
-- **24/7 Cloud Studio (Direct App URL):** [https://tapash36-chord-stem-studio.static.hf.space](https://tapash36-chord-stem-studio.static.hf.space)
-- **Hugging Face Space:** [https://huggingface.co/spaces/tapash36/chord-stem-studio](https://huggingface.co/spaces/tapash36/chord-stem-studio)
-- **GitHub Repository:** [https://github.com/Tapash36/chord-stem-studio](https://github.com/Tapash36/chord-stem-studio)
+- **24/7 Cloud App (Direct URL):** [https://tapash36-tapash-studio.static.hf.space](https://tapash36-tapash-studio.static.hf.space)
+- **Hugging Face Space (`tapash36/TapAsh-Studio`):** [https://huggingface.co/spaces/tapash36/TapAsh-Studio](https://huggingface.co/spaces/tapash36/TapAsh-Studio)
+- **GitHub Repository (`Tapash36/TapAsh-Studio`):** [https://github.com/Tapash36/TapAsh-Studio](https://github.com/Tapash36/TapAsh-Studio)
+- **GitHub Pages Mirror:** [https://tapash36.github.io/TapAsh-Studio/](https://tapash36.github.io/TapAsh-Studio/)
 
 ---
 
@@ -33,18 +34,13 @@ A full-stack AI audio engineering studio powered by **Meta Hybrid Transformer De
 
 ---
 
-## Running Locally in VS Code
+## Running TapAsh-Studio Locally in VS Code
 
-1. Open this folder in **VS Code**:
+1. Open the `TapAsh-Studio` folder in **VS Code**:
    ```bash
-   code .
+   code C:\Users\tapas\TapAsh-Studio
    ```
-2. Create the virtual environment and install dependencies (if running on a fresh machine):
-   ```bash
-   python -m venv .venv
-   .venv\Scripts\pip install -r backend\requirements.txt
-   ```
-3. Launch the studio:
+2. Launch **TapAsh-Studio**:
    - **Option A (VS Code Debugger):** Press **`F5`** in VS Code (uses `.vscode/launch.json`).
    - **Option B (VS Code Task):** Press **`Ctrl+Shift+B`** to run both Backend (`http://localhost:8000`) and Frontend (`http://localhost:3000`).
    - **Option C (One-Click Script):** Double-click `start.bat` (Windows) or run `./start.sh` (macOS/Linux).

@@ -77,7 +77,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("chord-stem-studio")
+logger = logging.getLogger("TapAsh-Studio")
 
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 STEM_NAMES = ["vocals", "guitar", "drums", "bass", "piano", "other"]
@@ -107,7 +107,7 @@ class CORSStaticFiles(StaticFiles):
 
 
 app = FastAPI(
-    title="Real-Time Chord Recognition, Scale/Pitch Transposition & 6-Stem Studio API",
+    title="TapAsh-Studio",
     version="1.0.0",
 )
 

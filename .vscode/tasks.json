@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Start Backend API (Port 8000)",
+      "label": "TapAsh-Studio: Start Backend API (Port 8000)",
       "type": "shell",
       "command": "${workspaceFolder}/.venv/Scripts/python.exe -m uvicorn backend.app:app --host 0.0.0.0 --port 8000",
       "options": {
@@ -12,7 +12,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Start Frontend UI (Port 3000)",
+      "label": "TapAsh-Studio: Start Frontend UI (Port 3000)",
       "type": "shell",
       "command": "${workspaceFolder}/.venv/Scripts/python.exe -m http.server 3000 --directory frontend",
       "options": {
@@ -22,10 +22,10 @@
       "problemMatcher": []
     },
     {
-      "label": "Start Full Studio (Backend + Frontend)",
+      "label": "TapAsh-Studio: Start Full Studio (Backend + Frontend)",
       "dependsOn": [
-        "Start Backend API (Port 8000)",
-        "Start Frontend UI (Port 3000)"
+        "TapAsh-Studio: Start Backend API (Port 8000)",
+        "TapAsh-Studio: Start Frontend UI (Port 3000)"
       ],
       "group": {
         "kind": "build",

@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch Studio Server (FastAPI + UI on Port 8000)",
+      "name": "TapAsh-Studio: Launch Server (Port 8000)",
       "type": "debugpy",
       "request": "launch",
       "module": "uvicorn",
