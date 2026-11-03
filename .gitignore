@@ -1,0 +1,22 @@
+# Virtual Environment & Binaries
+.venv/
+venv/
+ENV/
+.bin/
+
+# Runtime Jobs & Generated Audio Cache
+jobs/
+huggingface_upload/
+test_song.wav
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.cache/
+
+# OS & Editor Temp Files
+.DS_Store
+Thumbs.db
+*.log

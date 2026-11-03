@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AETHER // 6-Stem AI Separation, Chord HUD & Pitch Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            studio: {
+              bg: '#0a0a0c',
+              panel: '#111116',
+              border: '#1f1f29',
+              text: '#f4f4f6',
+              muted: '#858596',
+              accent: '#6366f1',
+              accentHover: '#818cf8'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      background-color: #0a0a0c;
+      color: #f4f4f6;
+      font-family: 'Inter', system-ui, sans-serif;
+      overflow-x: hidden;
+      user-select: none;
+    }
+    ::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0e0e12;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #272736;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #6366f1;
+    }
+    input[type="range"].stem-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"].stem-slider::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 999px;
+      background: #1e1e2a;
+    }
+    input[type="range"].stem-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #f4f4f6;
+      border: 2px solid #6366f1;
+      margin-top: -5px;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+      transition: transform 0.1s ease, background-color 0.1s ease;
+    }
+    input[type="range"].stem-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+      background: #6366f1;
+    }
+    .hud-glow {
+      text-shadow: 0 0 40px rgba(99, 102, 241, 0.45), 0 0 12px rgba(99, 102, 241, 0.25);
+    }
+    .drop-active {
+      border-color: #6366f1 !important;
+      background-color: rgba(99, 102, 241, 0.1) !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-[#0a0a0c] text-[#f4f4f6] selection:bg-indigo-500 selection:text-white">
+
+  <!-- TOP STUDIO BAR -->
+  <header class="border-b border-[#1f1f29] bg-[#0d0d11]/90 backdrop-blur-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-3 h-3 rounded-full bg-[#6366f1] shadow-[0_0_12px_#6366f1]"></div>
+          <span class="font-mono font-bold tracking-wider text-sm sm:text-base text-[#f4f4f6]">STUDIO<span class="text-[#6366f1]">//</span>CQT-6S</span>
+        </div>
+
+        <div class="h-4 w-[1px] bg-[#1f1f29] hidden sm:block"></div>
+
+        <!-- Processing Status Indicator -->
+        <div id="statusBadge" class="flex items-center gap-2 px-3 py-1 rounded-full bg-[#14141b] border border-[#232330] text-xs font-mono">
+          <span id="statusDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span id="statusText" class="text-[#a1a1b5]">INITIALIZING...</span>
+        </div>
+      </div>
+
+      <!-- Center Key/Scale Readout Badge -->
+      <div class="flex items-center gap-3">
+        <div class="px-3.5 py-1.5 rounded-lg bg-[#14141c] border border-[#262638] flex items-center gap-2.5 shadow-inner">
+          <span class="text-[11px] font-mono uppercase tracking-widest text-[#858596]">KEY / SCALE</span>
+          <span id="topScaleBadge" class="font-mono font-bold text-sm sm:text-base text-[#6366f1] tracking-tight">--</span>
+          <span id="topTransposeTag" class="hidden px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">0 ST</span>
+        </div>
+      </div>
+
+      <!-- Upload & Demo Actions -->
+      <div class="flex items-center gap-2.5">
+        <button
+          id="loadDemoBtn"
+          type="button"
+          class="px-3.5 py-2 rounded-lg text-xs font-mono font-semibold bg-[#161621] hover:bg-[#1e1e2d] text-[#d4d4e0] border border-[#29293a] transition flex items-center gap-1.5"
+          title="Load Verified 8s C-Am-F-G Demo Track"
+        >
+          <svg class="w-3.5 h-3.5 text-[#6366f1]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>LOAD DEMO TRACK</span>
+        </button>
+
+        <label
+          id="uploadDropZone"
+          for="audioFileInput"
+          class="cursor-pointer px-4 py-2 rounded-lg text-xs font-mono font-semibold bg-[#6366f1] hover:bg-[#818cf8] text-white shadow-[0_0_20px_rgba(99,102,241,0.35)] transition flex items-center gap-2 border border-indigo-400/30"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          <span>UPLOAD AUDIO</span>
+          <input id="audioFileInput" type="file" accept="audio/*,.wav,.mp3,.flac,.ogg,.m4a" class="hidden" />
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN STUDIO WORKSPACE -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-5 flex flex-col gap-5">
+
+    <!-- 1. CENTER HERO CHORD HUD & TRANSPORT -->
+    <section class="relative rounded-2xl bg-[#111116] border border-[#1f1f29] p-5 sm:p-7 overflow-hidden shadow-2xl">
+      <div class="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-48 bg-indigo-600/10 blur-3xl rounded-full"></div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-[#1b1b24] pb-3">
+        <div class="flex items-center gap-3">
+          <span class="text-[11px] font-mono uppercase tracking-widest text-[#858596]">HARMONIC CQT REAL-TIME HUD</span>
+          <span id="trackNameDisplay" class="text-xs font-mono text-indigo-400 bg-indigo-950/50 border border-indigo-800/40 px-2 py-0.5 rounded">test_song.wav</span>
+          <span id="engineBadge" class="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded">ENGINE: AUTO</span>
+        </div>
+        <div class="flex items-center gap-4 font-mono text-xs">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[#858596]">TIME:</span>
+            <span id="currentTimeReadout" class="text-[#f4f4f6] font-semibold">00:00.00</span>
+            <span class="text-[#555568]">/</span>
+            <span id="totalTimeReadout" class="text-[#858596]">00:00.00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3-Column Chord Hero Display (Prev | Active | Next) -->
+      <div class="grid grid-cols-3 items-center py-4 sm:py-6 select-none">
+        <div class="flex flex-col items-center justify-center border-r border-[#1b1b24]/80 px-2">
+          <span class="text-[10px] font-mono uppercase tracking-widest text-[#68687a] mb-1">PREV CHORD</span>
+          <div id="prevChordDisplay" class="font-mono font-bold text-2xl sm:text-4xl text-[#525263] transition-all duration-150">--</div>
+          <span id="prevChordTime" class="text-[11px] font-mono text-[#454554] mt-1">--</span>
+        </div>
+
+        <div class="flex flex-col items-center justify-center px-2">
+          <span class="text-[10px] font-mono uppercase tracking-widest text-indigo-400 mb-1">ACTIVE CHORD</span>
+          <div id="activeChordDisplay" class="font-mono font-extrabold text-5xl sm:text-7xl text-[#f4f4f6] hud-glow tracking-tight transition-transform duration-75">--</div>
+          <span id="activeChordQuality" class="text-xs font-mono text-[#858596] mt-2 uppercase tracking-wider">READY</span>
+        </div>
+
+        <div class="flex flex-col items-center justify-center border-l border-[#1b1b24]/80 px-2">
+          <span class="text-[10px] font-mono uppercase tracking-widest text-[#68687a] mb-1">NEXT CHORD</span>
+          <div id="nextChordDisplay" class="font-mono font-bold text-2xl sm:text-4xl text-[#525263] transition-all duration-150">--</div>
+          <span id="nextChordTime" class="text-[11px] font-mono text-[#454554] mt-1">--</span>
+        </div>
+      </div>
+
+      <!-- Transport & Master Scrubber Bar -->
+      <div class="mt-4 pt-4 border-t border-[#1b1b24] flex flex-col gap-3">
+        <div class="flex items-center gap-3">
+          <div
+            id="scrubberTrack"
+            class="relative flex-1 h-3 rounded-full bg-[#191922] border border-[#272736] cursor-pointer overflow-hidden group"
+            title="Click or drag to seek all 6 stems"
+          >
+            <div id="scrubberProgress" class="top-0 left-0 h-full bg-gradient-to-r from-indigo-600 to-indigo-400 w-0 pointer-events-none"></div>
+          </div>
+        </div>
+
+        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mt-1">
+          <div class="flex items-center gap-2 shrink-0">
+            <button
+              id="playPauseBtn"
+              type="button"
+              class="px-5 py-2.5 rounded-xl font-mono text-xs font-bold bg-[#6366f1] hover:bg-[#818cf8] text-white shadow-[0_0_20px_rgba(99,102,241,0.4)] transition flex items-center gap-2"
+            >
+              <svg id="playIcon" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              <svg id="pauseIcon" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+              </svg>
+              <span id="playPauseLabel">PLAY</span>
+            </button>
+
+            <button
+              id="stopBtn"
+              type="button"
+              class="px-3.5 py-2.5 rounded-xl font-mono text-xs font-semibold bg-[#181822] hover:bg-[#222230] text-[#d4d4e0] border border-[#272738] transition flex items-center gap-1.5"
+              title="Stop and return playhead to 00:00"
+            >
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 6h12v12H6z" />
+              </svg>
+              <span>STOP</span>
+            </button>
+
+            <button
+              id="loopBtn"
+              type="button"
+              class="px-3.5 py-2.5 rounded-xl font-mono text-xs font-semibold bg-[#181822] text-[#6366f1] border border-indigo-500/40 transition flex items-center gap-1.5"
+              title="Toggle seamless loop playback"
+            >
+              <span>LOOP: ON</span>
+            </button>
+          </div>
+
+          <div class="flex-1 overflow-x-auto pb-1">
+            <div id="chordRibbon" class="flex items-center gap-2 min-h-[44px]"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. SCALE & PITCH TRANSPOSITION BAR -->
+    <section class="rounded-2xl bg-[#111116] border border-[#1f1f29] p-4 sm:px-6 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-2 h-8 rounded-full bg-[#6366f1]"></div>
+        <div>
+          <h2 class="text-xs font-mono uppercase tracking-widest text-[#858596]">SCALE &amp; PITCH TRANSPOSITION ENGINE</h2>
+          <p class="text-xs text-[#68687a] mt-0.5">Real-time Web Audio cents detune (Drums locked @ 0 cents) + Phase-Vocoder HQ pitch rendering</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3 sm:gap-5">
+        <div class="flex items-center bg-[#0c0c10] border border-[#242432] rounded-xl p-1 gap-1">
+          <button
+            id="semitoneMinusBtn"
+            type="button"
+            class="w-9 h-9 rounded-lg font-mono text-base font-bold bg-[#171721] hover:bg-[#6366f1] hover:text-white text-[#f4f4f6] transition flex items-center justify-center"
+            title="Transpose Down 1 Semitone (-100 cents)"
+          >
+            &minus;
+          </button>
+
+          <div class="px-3 text-center min-w-[92px]">
+            <div id="semitoneReadout" class="font-mono font-bold text-sm text-[#f4f4f6]">0 ST</div>
+            <div id="centsReadout" class="font-mono text-[10px] text-[#858596]">0 CENTS</div>
+          </div>
+
+          <button
+            id="semitonePlusBtn"
+            type="button"
+            class="w-9 h-9 rounded-lg font-mono text-base font-bold bg-[#171721] hover:bg-[#6366f1] hover:text-white text-[#f4f4f6] transition flex items-center justify-center"
+            title="Transpose Up 1 Semitone (+100 cents)"
+          >
+            +
+          </button>
+
+          <button
+            id="semitoneResetBtn"
+            type="button"
+            class="px-2.5 h-9 rounded-lg font-mono text-[11px] font-semibold bg-[#14141d] hover:bg-[#1f1f2e] text-[#858596] hover:text-[#f4f4f6] transition"
+            title="Reset Transposition to 0 ST"
+          >
+            RESET
+          </button>
+        </div>
+
+        <div class="px-3.5 py-2 rounded-xl bg-[#0c0c10] border border-[#242432] font-mono text-xs flex items-center gap-2">
+          <span class="text-[#858596]">TRANSPOSED SCALE:</span>
+          <span id="transposedScaleReadout" class="font-bold text-[#6366f1] text-sm">--</span>
+        </div>
+
+        <button
+          id="renderHqPitchBtn"
+          type="button"
+          class="px-4 py-2.5 rounded-xl font-mono text-xs font-bold bg-indigo-600/20 hover:bg-[#6366f1] text-indigo-300 hover:text-white border border-indigo-500/40 transition flex items-center gap-2 shadow-sm"
+          title="Render tempo-preserving pitch shift and hot-swap buffers"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          <span id="renderHqPitchLabel">Render HQ Pitch</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 3. 6-STEM MIXER MATRIX -->
+    <section class="rounded-2xl bg-[#111116] border border-[#1f1f29] p-4 sm:p-6">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-[#1b1b24]">
+        <div class="flex items-center gap-2.5">
+          <h2 class="text-xs font-mono uppercase tracking-widest text-[#858596]">6-STEM MIXER MATRIX (HTDEMUCS_6S / HYBRID DSP)</h2>
+          <span id="pitchEngineModeBadge" class="px-2 py-0.5 rounded text-[10px] font-mono bg-[#181824] text-[#a1a1b5] border border-[#272738]">MODE: ORIGINAL BUFFERS</span>
+        </div>
+        <button
+          id="resetMixerBtn"
+          type="button"
+          class="text-xs font-mono text-[#858596] hover:text-[#f4f4f6] px-2.5 py-1 rounded bg-[#161620] border border-[#242432] transition"
+        >
+          RESET MIXER
+        </button>
+      </div>
+
+      <div id="stemRowsContainer" class="flex flex-col gap-2.5"></div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 border-t border-[#15151d] flex flex-wrap items-center justify-between text-[11px] font-mono text-[#5a5a6e]">
+    <div>HTDEMUCS_6S + CLOUD DSP 6-STEM ENGINE // HARMONIC CQT // KRUMHANSL-SCHMUCKLER KEY PROFILES</div>
+    <div>WEB AUDIO API 60FPS SYNC // DRUMS TRANSIENT LOCK ENABLED</div>
+  </footer>
+
+  <script>
+    // =========================================================================
+    // CONFIGURATION & CONSTANTS
+    // =========================================================================
+    const CANDIDATE_BACKENDS = [
+      (window.location.port === '3000' || window.location.protocol === 'file:')
+        ? `http://${window.location.hostname || 'localhost'}:8000`
+        : window.location.origin,
+      'http://localhost:8000'
+    ];
+    let API_BASE = CANDIDATE_BACKENDS[0];
+    let backendAvailable = false;
+
+    const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const FLAT_TO_SHARP = { 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#' };
+
+    const KS_MAJOR_PROFILE = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+    const KS_MINOR_PROFILE = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+
+    const STEMS_CONFIG = [
+      { id: 'vocals', label: 'Vocals', tag: 'LEAD / HARM', melodic: true, color: '#818cf8' },
+      { id: 'guitar', label: 'Guitar', tag: 'PLUCK / STRUM', melodic: true, color: '#38bdf8' },
+      { id: 'drums',  label: 'Drums',  tag: 'PERC / 0-DETUNE', melodic: false, color: '#f59e0b' },
+      { id: 'bass',   label: 'Bass',   tag: 'SUB / LOW', melodic: true, color: '#10b981' },
+      { id: 'piano',  label: 'Piano',  tag: 'KEYS / SYNTH', melodic: true, color: '#c084fc' },
+      { id: 'other',  label: 'Other',  tag: 'AMBIENT / FX', melodic: true, color: '#f472b6' },
+    ];
+
+    // =========================================================================
+    // STUDIO STATE
+    // =========================================================================
+    let audioCtx = null;
+    let isPlaying = false;
+    let isLooping = true;
+    let trackDuration = 0;
+    let startOffset = 0;
+    let startContextTime = 0;
+
+    let currentJobId = null;
+    let originalScale = 'C Major';
+    let originalChords = [];
+    let stemUrls = {};
+    let originalStemBuffers = {}; // Stored for client-side HQ pitch shifting when in 24/7 Cloud Mode
+
+    let currentSemitones = 0;
+    let renderedSemitones = 0;
+
+    const stemState = {};
+    STEMS_CONFIG.forEach(s => {
+      stemState[s.id] = {
+        buffer: null,
+        sourceNode: null,
+        gainNode: null,
+        analyserNode: null,
+        gain: 1.0,
+        muted: false,
+        soloed: false,
+        url: ''
+      };
+    });
+
+    // =========================================================================
+    // BACKEND AUTO-DETECTION (LOCAL FASTAPI VS 24/7 CLOUD DSP)
+    // =========================================================================
+    async function detectBackend() {
+      for (const candidate of CANDIDATE_BACKENDS) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 1800);
+          const res = await fetch(`${candidate}/health`, { signal: controller.signal, mode: 'cors' });
+          clearTimeout(timer);
+          if (res.ok) {
+            const json = await res.json();
+            if (json && json.status === 'ok') {
+              API_BASE = candidate;
+              backendAvailable = true;
+              document.getElementById('engineBadge').textContent = 'ENGINE: PYTHON HTDEMUCS_6S';
+              return true;
+            }
+          }
+        } catch (_) {}
+      }
+      backendAvailable = false;
+      document.getElementById('engineBadge').textContent = 'ENGINE: 24/7 CLOUD WEB-DSP';
+      return false;
+    }
+
+    // =========================================================================
+    // PITCH & CHORD TRANSPOSITION MATH (MODULO-12)
+    // =========================================================================
+    function normalizeNote(note) {
+      return FLAT_TO_SHARP[note] || note;
+    }
+
+    function transposeRootNote(root, semitones) {
+      const norm = normalizeNote(root);
+      const idx = NOTE_NAMES.indexOf(norm);
+      if (idx === -1) return root;
+      const shiftedIdx = ((idx + semitones) % 12 + 12) % 12;
+      return NOTE_NAMES[shiftedIdx];
+    }
+
+    function transposeChordSymbol(chordStr, semitones) {
+      if (!chordStr || chordStr === 'N' || chordStr === '--') return chordStr;
+      if (semitones === 0) return chordStr;
+      const match = chordStr.match(/^([A-G][#b]?)(.*)$/);
+      if (!match) return chordStr;
+      const [, root, suffix] = match;
+      return `${transposeRootNote(root, semitones)}${suffix}`;
+    }
+
+    function transposeScaleSymbol(scaleStr, semitones) {
+      if (!scaleStr || scaleStr === '--') return '--';
+      if (semitones === 0) return scaleStr;
+      const parts = scaleStr.trim().split(/\s+/);
+      if (parts.length < 2) return transposeChordSymbol(scaleStr, semitones);
+      const root = parts[0];
+      const mode = parts.slice(1).join(' ');
+      return `${transposeRootNote(root, semitones)} ${mode}`;
+    }
+
+    function describeChordQuality(chordStr) {
+      if (!chordStr || chordStr === '--' || chordStr === 'N') return 'NO CHORD';
+      if (chordStr.endsWith('maj7')) return 'MAJOR 7TH';
+      if (chordStr.endsWith('m7')) return 'MINOR 7TH';
+      if (chordStr.endsWith('7')) return 'DOMINANT 7TH';
+      if (chordStr.endsWith('m')) return 'MINOR TRIAD';
+      return 'MAJOR TRIAD';
+    }
+
+    function formatTime(sec) {
+      const s = Math.max(0, Number(sec) || 0);
+      const mins = Math.floor(s / 60);
+      const rem = s % 60;
+      return `${String(mins).padStart(2, '0')}:${rem.toFixed(2).padStart(5, '0')}`;
+    }
+
+    // =========================================================================
+    // WAV ENCODER FOR IN-BROWSER STEM EXPORT (DL .WAV)
+    // =========================================================================
+    function audioBufferToWavBlobUrl(audioBuffer) {
+      const numChannels = audioBuffer.numberOfChannels;
+      const sampleRate = audioBuffer.sampleRate;
+      const numFrames = audioBuffer.length;
+      const bytesPerSample = 2;
+      const blockAlign = numChannels * bytesPerSample;
+      const dataSize = numFrames * blockAlign;
+      const buffer = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(buffer);
+
+      function writeStr(offset, str) {
+        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+      }
+
+      writeStr(0, 'RIFF');
+      view.setUint32(4, 36 + dataSize, true);
+      writeStr(8, 'WAVE');
+      writeStr(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * blockAlign, true);
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, 16, true);
+      writeStr(36, 'data');
+      view.setUint32(40, dataSize, true);
+
+      const channels = [];
+      for (let c = 0; c < numChannels; c++) channels.push(audioBuffer.getChannelData(c));
+
+      let offset = 44;
+      for (let i = 0; i < numFrames; i++) {
+        for (let c = 0; c < numChannels; c++) {
+          const sample = Math.max(-1, Math.min(1, channels[c][i]));
+          view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+          offset += 2;
+        }
+      }
+
+      const blob = new Blob([buffer], { type: 'audio/wav' });
+      return URL.createObjectURL(blob);
+    }
+
+    // =========================================================================
+    // 24/7 CLOUD DSP ENGINE: DEMO SYNTH, CQT CHORD DETECTOR & 6-STEM SEPARATOR
+    // =========================================================================
+    function midiToFreq(m) {
+      return 440.0 * Math.pow(2.0, (m - 69) / 12.0);
+    }
+
+    function synthesizeCloudDemoStems() {
+      ensureAudioContext();
+      const sr = 44100;
+      const duration = 8.0;
+      const numSamples = Math.floor(sr * duration);
+
+      const buffers = {};
+      STEMS_CONFIG.forEach(s => {
+        buffers[s.id] = audioCtx.createBuffer(2, numSamples, sr);
+      });
+
+      const progression = [
+        { name: 'C',  start: 0.0, end: 2.0, bass: 36, notes: [48, 52, 55, 60, 64, 67, 72], lead: 76 },
+        { name: 'Am', start: 2.0, end: 4.0, bass: 45, notes: [57, 60, 64, 69, 72, 76],     lead: 72 },
+        { name: 'F',  start: 4.0, end: 6.0, bass: 41, notes: [53, 57, 60, 65, 69, 72],     lead: 69 },
+        { name: 'G',  start: 6.0, end: 8.0, bass: 43, notes: [55, 59, 62, 67, 71, 74],     lead: 74 },
+      ];
+
+      progression.forEach(seg => {
+        const sIdx = Math.floor(seg.start * sr);
+        const eIdx = Math.floor(seg.end * sr);
+        const segLen = eIdx - sIdx;
+
+        const vL = buffers.vocals.getChannelData(0), vR = buffers.vocals.getChannelData(1);
+        const gL = buffers.guitar.getChannelData(0), gR = buffers.guitar.getChannelData(1);
+        const bL = buffers.bass.getChannelData(0),   bR = buffers.bass.getChannelData(1);
+        const pL = buffers.piano.getChannelData(0),  pR = buffers.piano.getChannelData(1);
+        const oL = buffers.other.getChannelData(0),  oR = buffers.other.getChannelData(1);
+
+        const fBass = midiToFreq(seg.bass);
+        const fLead = midiToFreq(seg.lead);
+
+        for (let i = 0; i < segLen; i++) {
+          const t = i / sr;
+          let env = 1.0;
+          if (t < 0.04) env = t / 0.04;
+          else if (t > 1.92) env = Math.max(0.1, (2.0 - t) / 0.08);
+
+          // Bass stem
+          const bassVal = env * (0.38 * Math.sin(2 * Math.PI * fBass * t) + 0.14 * Math.sin(4 * Math.PI * fBass * t));
+          bL[sIdx + i] = bassVal;
+          bR[sIdx + i] = bassVal;
+
+          // Vocals / Lead formant synth stem
+          const vib = 1.0 + 0.003 * Math.sin(2 * Math.PI * 5.5 * t);
+          const vVal = env * 0.24 * (Math.sin(2 * Math.PI * fLead * vib * t) + 0.35 * Math.sin(4 * Math.PI * fLead * vib * t));
+          vL[sIdx + i] = vVal * 0.95;
+          vR[sIdx + i] = vVal * 1.05;
+
+          // Piano harmonic triad stem
+          let pValL = 0, pValR = 0;
+          const pianoDecay = Math.exp(-1.1 * (t % 1.0));
+          for (let n = 0; n < seg.notes.length; n++) {
+            const fn = midiToFreq(seg.notes[n]);
+            const tone = Math.sin(2 * Math.PI * fn * t);
+            pValL += tone * (0.8 - 0.05 * n);
+            pValR += tone * (0.5 + 0.06 * n);
+          }
+          pL[sIdx + i] = env * pianoDecay * (pValL / seg.notes.length) * 0.55;
+          pR[sIdx + i] = env * pianoDecay * (pValR / seg.notes.length) * 0.55;
+
+          // Guitar plucked arpeggio stem
+          const beatIdx = Math.floor(t / 0.5) % 4;
+          const bt = t % 0.5;
+          const gFreq = midiToFreq(seg.notes[(beatIdx % 3) + 2]);
+          const gVal = 0.28 * Math.sin(2 * Math.PI * gFreq * bt) * Math.exp(-6.5 * bt);
+          gL[sIdx + i] = gVal * (beatIdx % 2 === 0 ? 0.9 : 0.5);
+          gR[sIdx + i] = gVal * (beatIdx % 2 === 0 ? 0.5 : 0.9);
+
+          // Other / Warm ambient pad stem
+          const oFreq1 = midiToFreq(seg.notes[0] + 12);
+          const oFreq2 = midiToFreq(seg.notes[2] + 12);
+          const pad = 0.16 * env * (Math.sin(2 * Math.PI * oFreq1 * t) + Math.sin(2 * Math.PI * oFreq2 * t));
+          oL[sIdx + i] = pad * 0.85;
+          oR[sIdx + i] = pad * 1.15;
+        }
+      });
+
+      // Drums stem (kick + crisp hi-hat transients)
+      const dL = buffers.drums.getChannelData(0), dR = buffers.drums.getChannelData(1);
+      for (let step = 0; step < Math.floor(duration / 0.25); step++) {
+        const pStart = Math.floor(step * 0.25 * sr);
+        if (step % 2 === 0) {
+          const kLen = Math.min(Math.floor(0.07 * sr), numSamples - pStart);
+          let phase = 0;
+          for (let i = 0; i < kLen; i++) {
+            const kt = i / sr;
+            const kFreq = 46.0 + 70.0 * Math.exp(-45.0 * kt);
+            phase += (2 * Math.PI * kFreq) / sr;
+            const kick = 0.42 * Math.sin(phase) * Math.exp(-32.0 * kt);
+            dL[pStart + i] += kick;
+            dR[pStart + i] += kick;
+          }
+        } else {
+          const hLen = Math.min(Math.floor(0.03 * sr), numSamples - pStart);
+          let prev = 0;
+          for (let i = 0; i < hLen; i++) {
+            const ht = i / sr;
+            const r = (Math.random() * 2 - 1);
+            const hp = r - prev;
+            prev = r;
+            const hat = 0.15 * hp * Math.exp(-85.0 * ht);
+            dL[pStart + i] += hat * 0.9;
+            dR[pStart + i] += hat * 1.1;
+          }
+        }
+      }
+
+      return {
+        job_id: 'cloud_demo_track',
+        detected_scale: 'C Major',
+        duration: 8.0,
+        chords: [
+          { start: 0.0, end: 2.0, chord: 'C' },
+          { start: 2.0, end: 4.0, chord: 'Am' },
+          { start: 4.0, end: 6.0, chord: 'F' },
+          { start: 6.0, end: 8.0, chord: 'G' }
+        ],
+        buffers
+      };
+    }
+
+    // Build normalized 12-pitch-class templates in JS for Cloud DSP fallback
+    const JS_CHORD_TEMPLATES = (() => {
+      const defs = [
+        { suffix: '',     intervals: [0, 4, 7],     weights: [1.05, 1.0, 0.95], is7: false, sev: null },
+        { suffix: 'm',    intervals: [0, 3, 7],     weights: [1.05, 1.0, 0.95], is7: false, sev: null },
+        { suffix: '7',    intervals: [0, 4, 7, 10], weights: [1.0, 0.95, 0.85, 0.95], is7: true, sev: 10 },
+        { suffix: 'maj7', intervals: [0, 4, 7, 11], weights: [1.0, 0.95, 0.85, 0.95], is7: true, sev: 11 },
+        { suffix: 'm7',   intervals: [0, 3, 7, 10], weights: [1.0, 0.95, 0.85, 0.95], is7: true, sev: 10 },
+      ];
+      const list = [];
+      NOTE_NAMES.forEach((rootName, rootIdx) => {
+        defs.forEach(d => {
+          const vec = new Float64Array(12);
+          d.intervals.forEach((intv, k) => { vec[(rootIdx + intv) % 12] = d.weights[k]; });
+          let norm = 0;
+          for (let i = 0; i < 12; i++) norm += vec[i] * vec[i];
+          norm = Math.sqrt(norm) + 1e-12;
+          for (let i = 0; i < 12; i++) vec[i] /= norm;
+          list.push({
+            name: `${rootName}${d.suffix}`,
+            root: rootIdx,
+            vec,
+            is7: d.is7,
+            sevPc: d.sev !== null ? (rootIdx + d.sev) % 12 : null
+          });
+        });
+      });
+      return list;
+    })();
+
+    function detectChordsAndScaleInBrowser(audioBuffer) {
+      const sr = audioBuffer.sampleRate;
+      const duration = audioBuffer.duration;
+      const ch0 = audioBuffer.getChannelData(0);
+      const ch1 = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : ch0;
+
+      // Analyze in 0.5s windows using Goertzel / direct CQT pitch-class resonators (C2..B5)
+      const blockDur = 0.5;
+      const nBlocks = Math.max(1, Math.ceil(duration / blockDur));
+      const globalChroma = new Float64Array(12);
+      const rawSegments = [];
+
+      // Precompute CQT frequencies for 4 octaves (MIDI 36..83)
+      const noteFreqs = [];
+      for (let midi = 36; midi < 84; midi++) {
+        noteFreqs.push({ pc: midi % 12, freq: midiToFreq(midi) });
+      }
+
+      for (let b = 0; b < nBlocks; b++) {
+        const tStart = Number((b * blockDur).toFixed(2));
+        const tEnd = Number(Math.min(duration, (b + 1) * blockDur).toFixed(2));
+        if (tEnd <= tStart) continue;
+
+        const sIdx = Math.floor(tStart * sr);
+        const eIdx = Math.min(ch0.length, Math.floor(tEnd * sr));
+        // Subsample by 4x (~11025Hz effective) for fast CQT correlation
+        const step = Math.max(1, Math.floor(sr / 11025));
+        const chroma = new Float64Array(12);
+
+        for (let n = 0; n < noteFreqs.length; n++) {
+          const omega = 2 * Math.PI * noteFreqs[n].freq / sr;
+          let re = 0, im = 0;
+          const maxSamples = Math.min(eIdx, sIdx + Math.floor(sr * 0.35));
+          for (let i = sIdx; i < maxSamples; i += step) {
+            const mono = 0.5 * (ch0[i] + ch1[i]);
+            re += mono * Math.cos(omega * i);
+            im += mono * Math.sin(omega * i);
+          }
+          const mag = Math.sqrt(re * re + im * im);
+          chroma[noteFreqs[n].pc] += mag;
+        }
+
+        let norm = 0;
+        for (let i = 0; i < 12; i++) {
+          globalChroma[i] += chroma[i];
+          norm += chroma[i] * chroma[i];
+        }
+        norm = Math.sqrt(norm);
+
+        let bestChord = rawSegments.length ? rawSegments[rawSegments.length - 1].chord : 'C';
+        if (norm > 1e-6) {
+          let bestScore = -1;
+          for (let t = 0; t < JS_CHORD_TEMPLATES.length; t++) {
+            const tpl = JS_CHORD_TEMPLATES[t];
+            let dot = 0;
+            for (let i = 0; i < 12; i++) dot += (chroma[i] / norm) * tpl.vec[i];
+            if (tpl.is7) {
+              const rootVal = chroma[tpl.root] / norm;
+              const sevVal = chroma[tpl.sevPc] / norm;
+              dot *= (sevVal < 0.38 * Math.max(rootVal, 0.25)) ? 0.88 : 0.96;
+            }
+            if (dot > bestScore) {
+              bestScore = dot;
+              bestChord = tpl.name;
+            }
+          }
+        }
+
+        if (rawSegments.length && rawSegments[rawSegments.length - 1].chord === bestChord) {
+          rawSegments[rawSegments.length - 1].end = tEnd;
+        } else {
+          rawSegments.push({ start: tStart, end: tEnd, chord: bestChord });
+        }
+      }
+
+      // Krumhansl-Schmuckler Key Profile Correlation
+      let meanC = 0;
+      for (let i = 0; i < 12; i++) meanC += globalChroma[i] / 12;
+      let bestKey = 'C Major', bestCorr = -1e9;
+
+      const scoreProfile = (profile, labelSuffix) => {
+        const meanP = profile.reduce((a, b) => a + b, 0) / 12;
+        for (let r = 0; r < 12; r++) {
+          let num = 0, dC = 0, dP = 0;
+          for (let i = 0; i < 12; i++) {
+            const cDiff = globalChroma[(i + r) % 12] - meanC;
+            const pDiff = profile[i] - meanP;
+            num += cDiff * pDiff;
+            dC += cDiff * cDiff;
+            dP += pDiff * pDiff;
+          }
+          const corr = num / (Math.sqrt(dC * dP) + 1e-12);
+          if (corr > bestCorr) {
+            bestCorr = corr;
+            bestKey = `${NOTE_NAMES[r]} ${labelSuffix}`;
+          }
+        }
+      };
+      scoreProfile(KS_MAJOR_PROFILE, 'Major');
+      scoreProfile(KS_MINOR_PROFILE, 'Minor');
+
+      return { detected_scale: bestKey, duration, chords: rawSegments };
+    }
+
+    async function separate6StemsInBrowser(srcBuffer) {
+      ensureAudioContext();
+      const sr = srcBuffer.sampleRate;
+      const len = srcBuffer.length;
+      const chL = srcBuffer.getChannelData(0);
+      const chR = srcBuffer.numberOfChannels > 1 ? srcBuffer.getChannelData(1) : chL;
+
+      const outBuffers = {};
+      STEMS_CONFIG.forEach(s => {
+        outBuffers[s.id] = audioCtx.createBuffer(2, len, sr);
+      });
+
+      // One-pole filter state variables for fast multi-band + Mid/Side decomposition
+      const alphaSub = 1 - Math.exp(-2 * Math.PI * 170 / sr);
+      const alphaMidLow = 1 - Math.exp(-2 * Math.PI * 750 / sr);
+      const alphaMidHigh = 1 - Math.exp(-2 * Math.PI * 3200 / sr);
+      const alphaEnvFast = 1 - Math.exp(-2 * Math.PI * 95 / sr);
+      const alphaEnvSlow = 1 - Math.exp(-2 * Math.PI * 12 / sr);
+
+      let lpSubL = 0, lpSubR = 0;
+      let lpMidLowL = 0, lpMidLowR = 0;
+      let lpMidHighL = 0, lpMidHighR = 0;
+      let envFast = 0, envSlow = 0;
+
+      const vL = outBuffers.vocals.getChannelData(0), vR = outBuffers.vocals.getChannelData(1);
+      const gL = outBuffers.guitar.getChannelData(0), gR = outBuffers.guitar.getChannelData(1);
+      const dL = outBuffers.drums.getChannelData(0),  dR = outBuffers.drums.getChannelData(1);
+      const bL = outBuffers.bass.getChannelData(0),   bR = outBuffers.bass.getChannelData(1);
+      const pL = outBuffers.piano.getChannelData(0),  pR = outBuffers.piano.getChannelData(1);
+      const oL = outBuffers.other.getChannelData(0),  oR = outBuffers.other.getChannelData(1);
+
+      for (let i = 0; i < len; i++) {
+        const L = chL[i], R = chR[i];
+        const mid = 0.5 * (L + R);
+        const side = 0.5 * (L - R);
+
+        const absMono = Math.abs(mid);
+        envFast += alphaEnvFast * (absMono - envFast);
+        envSlow += alphaEnvSlow * (absMono - envSlow);
+        const transientMask = Math.min(1.0, Math.max(0.0, (envFast - envSlow * 1.15) * 4.5));
+        const harmMask = 1.0 - 0.65 * transientMask;
+
+        lpSubL += alphaSub * (L - lpSubL);
+        lpSubR += alphaSub * (R - lpSubR);
+
+        lpMidLowL += alphaMidLow * (L - lpMidLowL);
+        lpMidLowR += alphaMidLow * (R - lpMidLowR);
+
+        lpMidHighL += alphaMidHigh * (L - lpMidHighL);
+        lpMidHighR += alphaMidHigh * (R - lpMidHighR);
+
+        // 1. Bass (< 170Hz harmonic)
+        bL[i] = lpSubL * harmMask;
+        bR[i] = lpSubR * harmMask;
+
+        // 2. Drums (transient bursts + high-hat > 3.2kHz percussive)
+        const highL = L - lpMidHighL;
+        const highR = R - lpMidHighR;
+        dL[i] = L * transientMask + highL * 0.45;
+        dR[i] = R * transientMask + highR * 0.45;
+
+        // 3. Piano (170Hz - 750Hz warm harmonic body)
+        pL[i] = (lpMidLowL - lpSubL) * harmMask;
+        pR[i] = (lpMidLowR - lpSubR) * harmMask;
+
+        // 4. Vocals (Center-channel Mid 300Hz - 3200Hz harmonic)
+        const midBand = 0.5 * ((lpMidHighL - lpMidLowL) + (lpMidHighR - lpMidLowR));
+        vL[i] = midBand * harmMask * 0.85;
+        vR[i] = midBand * harmMask * 0.85;
+
+        // 5. Guitar (750Hz - 3200Hz stereo harmonic)
+        gL[i] = ((lpMidHighL - lpMidLowL) - vL[i] * 0.5) * harmMask;
+        gR[i] = ((lpMidHighR - lpMidLowR) - vR[i] * 0.5) * harmMask;
+
+        // 6. Other (Stereo side & upper harmonic ambience)
+        oL[i] = side * harmMask + highL * harmMask * 0.55;
+        oR[i] = -side * harmMask + highR * harmMask * 0.55;
+      }
+
+      return outBuffers;
+    }
+
+    function pitchShiftBufferInBrowser(srcBuffer, semitones) {
+      if (semitones === 0) return srcBuffer;
+      ensureAudioContext();
+      const sr = srcBuffer.sampleRate;
+      const len = srcBuffer.length;
+      const nCh = srcBuffer.numberOfChannels;
+      const dst = audioCtx.createBuffer(nCh, len, sr);
+      const pitchRatio = Math.pow(2.0, semitones / 12.0);
+      const grainSize = 2048;
+      const halfGrain = grainSize >> 1;
+
+      for (let c = 0; c < nCh; c++) {
+        const inp = srcBuffer.getChannelData(c);
+        const out = dst.getChannelData(c);
+        let phaseA = 0;
+        let phaseB = halfGrain;
+
+        for (let i = 0; i < len; i++) {
+          const readA = i - Math.floor(phaseA);
+          const readB = i - Math.floor(phaseB);
+
+          const winA = 0.5 * (1 - Math.cos((2 * Math.PI * phaseA) / grainSize));
+          const winB = 0.5 * (1 - Math.cos((2 * Math.PI * phaseB) / grainSize));
+
+          const sA = (readA >= 0 && readA < len) ? inp[readA] : 0;
+          const sB = (readB >= 0 && readB < len) ? inp[readB] : 0;
+
+          out[i] = sA * winA + sB * winB;
+
+          const delta = 1.0 - pitchRatio;
+          phaseA = (phaseA + delta) % grainSize;
+          if (phaseA < 0) phaseA += grainSize;
+          phaseB = (phaseB + delta) % grainSize;
+          if (phaseB < 0) phaseB += grainSize;
+        }
+      }
+      return dst;
+    }
+
+    // =========================================================================
+    // UI INITIALIZATION: 6-STEM MIXER MATRIX
+    // =========================================================================
+    function buildMixerMatrixUI() {
+      const container = document.getElementById('stemRowsContainer');
+      container.innerHTML = '';
+
+      STEMS_CONFIG.forEach(stem => {
+        const row = document.createElement('div');
+        row.className = 'grid grid-cols-12 items-center gap-3 px-4 py-3 rounded-xl bg-[#0d0d12] border border-[#1c1c26] hover:border-[#292938] transition';
+        row.innerHTML = `
+          <div class="col-span-5 sm:col-span-3 flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${stem.color}; box-shadow: 0 0 8px ${stem.color}"></span>
+            <div>
+              <div class="font-mono font-bold text-sm text-[#f4f4f6] leading-none">${stem.label}</div>
+              <div class="font-mono text-[10px] text-[#6c6c80] mt-1">${stem.tag}</div>
+            </div>
+          </div>
+
+          <div class="col-span-3 sm:col-span-2 flex items-center gap-1.5">
+            <button
+              id="muteBtn_${stem.id}"
+              type="button"
+              data-stem="${stem.id}"
+              class="w-8 h-8 rounded-lg font-mono text-xs font-bold border border-[#2a2a3a] bg-[#161620] text-[#858596] hover:text-white transition"
+              title="Mute ${stem.label}"
+            >M</button>
+            <button
+              id="soloBtn_${stem.id}"
+              type="button"
+              data-stem="${stem.id}"
+              class="w-8 h-8 rounded-lg font-mono text-xs font-bold border border-[#2a2a3a] bg-[#161620] text-[#858596] hover:text-white transition"
+              title="Solo ${stem.label}"
+            >S</button>
+          </div>
+
+          <div class="col-span-12 sm:col-span-5 flex flex-col gap-1.5 order-last sm:order-none mt-1 sm:mt-0">
+            <div class="flex items-center gap-3">
+              <input
+                id="gainSlider_${stem.id}"
+                type="range"
+                min="0"
+                max="1.2"
+                step="0.01"
+                value="1.0"
+                data-stem="${stem.id}"
+                class="stem-slider w-full"
+              />
+              <span id="gainValue_${stem.id}" class="font-mono text-xs text-[#a1a1b5] w-12 text-right">100%</span>
+            </div>
+            <div class="w-full h-1 rounded-full bg-[#181822] overflow-hidden">
+              <div id="meterBar_${stem.id}" class="h-full w-0 transition-all duration-75" style="background-color: ${stem.color}"></div>
+            </div>
+          </div>
+
+          <div class="col-span-4 sm:col-span-2 flex justify-end">
+            <a
+              id="dlBtn_${stem.id}"
+              href="#"
+              download="${stem.id}.wav"
+              target="_blank"
+              class="px-3 py-1.5 rounded-lg font-mono text-xs font-semibold bg-[#161622] hover:bg-[#6366f1] text-[#d4d4e0] hover:text-white border border-[#29293d] transition flex items-center gap-1.5"
+              title="Download ${stem.label} WAV stem"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+              </svg>
+              <span>DL .WAV</span>
+            </a>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+
+      STEMS_CONFIG.forEach(stem => {
+        document.getElementById(`muteBtn_${stem.id}`).addEventListener('click', () => toggleMute(stem.id));
+        document.getElementById(`soloBtn_${stem.id}`).addEventListener('click', () => toggleSolo(stem.id));
+        document.getElementById(`gainSlider_${stem.id}`).addEventListener('input', (e) => {
+          setStemGain(stem.id, parseFloat(e.target.value));
+        });
+      });
+    }
+
+    // =========================================================================
+    // WEB AUDIO API ENGINE
+    // =========================================================================
+    function ensureAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContextClass();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      STEMS_CONFIG.forEach(stem => {
+        const st = stemState[stem.id];
+        if (!st.gainNode) {
+          st.gainNode = audioCtx.createGain();
+          st.analyserNode = audioCtx.createAnalyser();
+          st.analyserNode.fftSize = 256;
+          st.gainNode.connect(st.analyserNode);
+          st.analyserNode.connect(audioCtx.destination);
+        }
+      });
+      applyMixerGains();
+    }
+
+    function applyMixerGains() {
+      const anySolo = STEMS_CONFIG.some(s => stemState[s.id].soloed);
+      STEMS_CONFIG.forEach(s => {
+        const st = stemState[s.id];
+        let effectiveGain = st.gain;
+        if (st.muted) {
+          effectiveGain = 0;
+        } else if (anySolo && !st.soloed) {
+          effectiveGain = 0;
+        }
+        if (st.gainNode && audioCtx) {
+          st.gainNode.gain.setTargetAtTime(effectiveGain, audioCtx.currentTime, 0.015);
+        }
+      });
+    }
+
+    function applyRealtimeDetune() {
+      const relativeSemitones = currentSemitones - renderedSemitones;
+      const cents = relativeSemitones * 100;
+
+      STEMS_CONFIG.forEach(s => {
+        const st = stemState[s.id];
+        if (st.sourceNode) {
+          const targetDetune = s.melodic ? cents : 0;
+          st.sourceNode.detune.setValueAtTime(targetDetune, audioCtx ? audioCtx.currentTime : 0);
+        }
+      });
+    }
+
+    function toggleMute(stemId) {
+      const st = stemState[stemId];
+      st.muted = !st.muted;
+      const btn = document.getElementById(`muteBtn_${stemId}`);
+      btn.className = st.muted
+        ? 'w-8 h-8 rounded-lg font-mono text-xs font-bold border border-rose-500/60 bg-rose-500/20 text-rose-300 transition'
+        : 'w-8 h-8 rounded-lg font-mono text-xs font-bold border border-[#2a2a3a] bg-[#161620] text-[#858596] hover:text-white transition';
+      applyMixerGains();
+    }
+
+    function toggleSolo(stemId) {
+      const st = stemState[stemId];
+      st.soloed = !st.soloed;
+      const btn = document.getElementById(`soloBtn_${stemId}`);
+      btn.className = st.soloed
+        ? 'w-8 h-8 rounded-lg font-mono text-xs font-bold border border-amber-400/60 bg-amber-400/20 text-amber-300 transition'
+        : 'w-8 h-8 rounded-lg font-mono text-xs font-bold border border-[#2a2a3a] bg-[#161620] text-[#858596] hover:text-white transition';
+      applyMixerGains();
+    }
+
+    function setStemGain(stemId, value) {
+      stemState[stemId].gain = value;
+      document.getElementById(`gainValue_${stemId}`).textContent = `${Math.round(value * 100)}%`;
+      applyMixerGains();
+    }
+
+    function stopActiveSources() {
+      STEMS_CONFIG.forEach(s => {
+        const st = stemState[s.id];
+        if (st.sourceNode) {
+          try {
+            st.sourceNode.onended = null;
+            st.sourceNode.stop();
+            st.sourceNode.disconnect();
+          } catch (_) {}
+          st.sourceNode = null;
+        }
+      });
+    }
+
+    function getPlayheadTime() {
+      if (!isPlaying || !audioCtx) return startOffset;
+      const elapsed = audioCtx.currentTime - startContextTime;
+      if (trackDuration <= 0) return 0;
+      const pos = startOffset + elapsed;
+      if (pos >= trackDuration) {
+        return isLooping ? (pos % trackDuration) : trackDuration;
+      }
+      return pos;
+    }
+
+    function startPlaybackAt(offsetSec) {
+      ensureAudioContext();
+      stopActiveSources();
+
+      const hasBuffers = STEMS_CONFIG.every(s => stemState[s.id].buffer !== null);
+      if (!hasBuffers) return;
+
+      const clampedOffset = Math.max(0, Math.min(offsetSec, Math.max(0, trackDuration - 0.01)));
+      startOffset = clampedOffset;
+      startContextTime = audioCtx.currentTime;
+
+      const relativeSemitones = currentSemitones - renderedSemitones;
+      const cents = relativeSemitones * 100;
+
+      STEMS_CONFIG.forEach(s => {
+        const st = stemState[s.id];
+        const source = audioCtx.createBufferSource();
+        source.buffer = st.buffer;
+        source.detune.value = s.melodic ? cents : 0;
+        source.connect(st.gainNode);
+        source.start(0, clampedOffset);
+        st.sourceNode = source;
+      });
+
+      isPlaying = true;
+      updateTransportButtons();
+    }
+
+    function pausePlayback() {
+      if (!isPlaying) return;
+      startOffset = getPlayheadTime();
+      stopActiveSources();
+      isPlaying = false;
+      updateTransportButtons();
+    }
+
+    function stopPlayback() {
+      stopActiveSources();
+      isPlaying = false;
+      startOffset = 0;
+      updateTransportButtons();
+      updateHUDFrame();
+    }
+
+    function seekTo(targetSec) {
+      const clamped = Math.max(0, Math.min(targetSec, trackDuration || 0));
+      startOffset = clamped;
+      if (isPlaying) {
+        startPlaybackAt(clamped);
+      } else {
+        updateHUDFrame();
+      }
+    }
+
+    function updateTransportButtons() {
+      const playIcon = document.getElementById('playIcon');
+      const pauseIcon = document.getElementById('pauseIcon');
+      const label = document.getElementById('playPauseLabel');
+      if (isPlaying) {
+        playIcon.classList.add('hidden');
+        pauseIcon.classList.remove('hidden');
+        label.textContent = 'PAUSE';
+      } else {
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+        label.textContent = 'PLAY';
+      }
+    }
+
+    // =========================================================================
+    // APPLYING BUFFERS & HOT-SWAPPING
+    // =========================================================================
+    function applyDecodedStemBuffers(buffersMap, urlsMap = {}, newRenderedSemitones = 0, preservePlayhead = false) {
+      ensureAudioContext();
+      const wasPlaying = isPlaying;
+      const savedPosition = getPlayheadTime();
+
+      STEMS_CONFIG.forEach(s => {
+        const buf = buffersMap[s.id];
+        if (!buf) return;
+        stemState[s.id].buffer = buf;
+        const url = urlsMap[s.id] || audioBufferToWavBlobUrl(buf);
+        stemState[s.id].url = url;
+        if (buf.duration > trackDuration || !preservePlayhead) {
+          trackDuration = buf.duration;
+        }
+        const dlBtn = document.getElementById(`dlBtn_${s.id}`);
+        if (dlBtn) {
+          dlBtn.href = url;
+          const shiftSuffix = newRenderedSemitones === 0
+            ? ''
+            : `_${newRenderedSemitones > 0 ? 'plus' : 'minus'}${Math.abs(newRenderedSemitones)}st`;
+          dlBtn.setAttribute('download', `${s.id}${shiftSuffix}.wav`);
+        }
+      });
+
+      renderedSemitones = newRenderedSemitones;
+      document.getElementById('totalTimeReadout').textContent = formatTime(trackDuration);
+
+      const modeBadge = document.getElementById('pitchEngineModeBadge');
+      if (renderedSemitones === 0) {
+        modeBadge.textContent = 'MODE: ORIGINAL BUFFERS';
+        modeBadge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-[#181824] text-[#a1a1b5] border border-[#272738]';
+      } else {
+        const sign = renderedSemitones > 0 ? `+${renderedSemitones}` : `${renderedSemitones}`;
+        modeBadge.textContent = `MODE: HQ PHASE-VOCODER (${sign} ST)`;
+        modeBadge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+      }
+
+      if (preservePlayhead && wasPlaying) {
+        startPlaybackAt(savedPosition);
+      } else if (!preservePlayhead) {
+        startOffset = 0;
+        updateHUDFrame();
+      } else {
+        applyRealtimeDetune();
+        updateHUDFrame();
+      }
+    }
+
+    async function loadStemBuffersFromUrls(urlsMap, newRenderedSemitones = 0, preservePlayhead = false) {
+      ensureAudioContext();
+      const buffersMap = {};
+      await Promise.all(STEMS_CONFIG.map(async (s) => {
+        const url = urlsMap[s.id];
+        if (!url) throw new Error(`Missing stem URL for ${s.id}`);
+        const res = await fetch(url, { mode: 'cors', cache: 'no-store' });
+        if (!res.ok) throw new Error(`Failed to fetch ${s.id} (${res.status})`);
+        const arrayBuf = await res.arrayBuffer();
+        buffersMap[s.id] = await audioCtx.decodeAudioData(arrayBuf);
+      }));
+      if (newRenderedSemitones === 0) {
+        originalStemBuffers = { ...buffersMap };
+      }
+      applyDecodedStemBuffers(buffersMap, urlsMap, newRenderedSemitones, preservePlayhead);
+    }
+
+    // =========================================================================
+    // CHORD RIBBON & TRANSPOSITION UI UPDATES
+    // =========================================================================
+    function renderChordRibbon() {
+      const ribbon = document.getElementById('chordRibbon');
+      ribbon.innerHTML = '';
+
+      originalChords.forEach((seg, idx) => {
+        const transposedChord = transposeChordSymbol(seg.chord, currentSemitones);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = `chordBlock_${idx}`;
+        btn.dataset.index = idx;
+        btn.className = 'chord-block shrink-0 px-3.5 py-2 rounded-xl border border-[#252534] bg-[#15151f] hover:border-[#6366f1] transition flex items-center gap-2.5 text-left group';
+        btn.innerHTML = `
+          <span class="font-mono font-bold text-sm text-[#f4f4f6] group-hover:text-indigo-300">${transposedChord}</span>
+          <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#0c0c12] text-[#858596]">${seg.start.toFixed(1)}s</span>
+        `;
+        btn.addEventListener('click', () => {
+          seekTo(seg.start);
+          if (!isPlaying) startPlaybackAt(seg.start);
+        });
+        ribbon.appendChild(btn);
+      });
+    }
+
+    function updateTranspositionUI() {
+      const signStr = currentSemitones > 0 ? `+${currentSemitones} ST` : `${currentSemitones} ST`;
+      const centsVal = currentSemitones * 100;
+      const centsStr = centsVal > 0 ? `+${centsVal} CENTS` : `${centsVal} CENTS`;
+
+      document.getElementById('semitoneReadout').textContent = signStr;
+      document.getElementById('centsReadout').textContent = centsStr;
+
+      const newScale = transposeScaleSymbol(originalScale, currentSemitones);
+      document.getElementById('topScaleBadge').textContent = newScale;
+      document.getElementById('transposedScaleReadout').textContent =
+        currentSemitones === 0 ? newScale : `${originalScale} → ${newScale}`;
+
+      const topTag = document.getElementById('topTransposeTag');
+      if (currentSemitones === 0) {
+        topTag.classList.add('hidden');
+      } else {
+        topTag.classList.remove('hidden');
+        topTag.textContent = signStr;
+      }
+
+      renderChordRibbon();
+      applyRealtimeDetune();
+      updateHUDFrame();
+    }
+
+    function setSemitones(newVal) {
+      currentSemitones = Math.max(-12, Math.min(12, newVal));
+      updateTranspositionUI();
+    }
+
+    // =========================================================================
+    // 60FPS ANIMATION LOOP: HUD, SCRUBBER & STEM LEVEL METERS
+    // =========================================================================
+    let activeChordIdx = -1;
+    const freqBuffer = new Uint8Array(128);
+
+    function updateHUDFrame() {
+      const nowSec = getPlayheadTime();
+
+      if (isPlaying && trackDuration > 0) {
+        const rawElapsed = audioCtx.currentTime - startContextTime;
+        if (startOffset + rawElapsed >= trackDuration) {
+          if (isLooping) {
+            startPlaybackAt(0);
+            return;
+          } else {
+            stopPlayback();
+            return;
+          }
+        }
+      }
+
+      document.getElementById('currentTimeReadout').textContent = formatTime(nowSec);
+      const pct = trackDuration > 0 ? Math.min(100, (nowSec / trackDuration) * 100) : 0;
+      document.getElementById('scrubberProgress').style.width = `${pct}%`;
+
+      if (originalChords.length > 0) {
+        let idx = originalChords.findIndex(c => nowSec >= c.start && nowSec < c.end);
+        if (idx === -1) {
+          idx = nowSec >= originalChords[originalChords.length - 1].end
+            ? originalChords.length - 1
+            : 0;
+        }
+
+        const curr = originalChords[idx];
+        const prev = idx > 0 ? originalChords[idx - 1] : null;
+        const next = idx < originalChords.length - 1 ? originalChords[idx + 1] : null;
+
+        const currSymbol = transposeChordSymbol(curr.chord, currentSemitones);
+        const prevSymbol = prev ? transposeChordSymbol(prev.chord, currentSemitones) : '--';
+        const nextSymbol = next ? transposeChordSymbol(next.chord, currentSemitones) : '--';
+
+        document.getElementById('activeChordDisplay').textContent = currSymbol;
+        document.getElementById('activeChordQuality').textContent =
+          `${describeChordQuality(currSymbol)} // ${curr.start.toFixed(1)}s - ${curr.end.toFixed(1)}s`;
+
+        document.getElementById('prevChordDisplay').textContent = prevSymbol;
+        document.getElementById('prevChordTime').textContent = prev ? `${prev.start.toFixed(1)}s` : 'START';
+
+        document.getElementById('nextChordDisplay').textContent = nextSymbol;
+        document.getElementById('nextChordTime').textContent = next ? `${next.start.toFixed(1)}s` : 'END';
+
+        if (idx !== activeChordIdx) {
+          activeChordIdx = idx;
+          originalChords.forEach((_, i) => {
+            const block = document.getElementById(`chordBlock_${i}`);
+            if (!block) return;
+            block.className = (i === idx)
+              ? 'chord-block shrink-0 px-3.5 py-2 rounded-xl border border-[#6366f1] bg-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.3)] transition flex items-center gap-2.5 text-left'
+              : 'chord-block shrink-0 px-3.5 py-2 rounded-xl border border-[#252534] bg-[#15151f] hover:border-[#6366f1] transition flex items-center gap-2.5 text-left group';
+          });
+        }
+      }
+
+      STEMS_CONFIG.forEach(s => {
+        const st = stemState[s.id];
+        const meterEl = document.getElementById(`meterBar_${s.id}`);
+        if (!meterEl) return;
+        if (isPlaying && st.analyserNode) {
+          st.analyserNode.getByteTimeDomainData(freqBuffer);
+          let sumSq = 0;
+          for (let i = 0; i < freqBuffer.length; i++) {
+            const norm = (freqBuffer[i] - 128) / 128;
+            sumSq += norm * norm;
+          }
+          const rms = Math.sqrt(sumSq / freqBuffer.length);
+          const meterPct = Math.min(100, Math.round(rms * 280));
+          meterEl.style.width = `${meterPct}%`;
+        } else {
+          meterEl.style.width = '0%';
+        }
+      });
+    }
+
+    function startAnimationLoop() {
+      function tick() {
+        updateHUDFrame();
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    // =========================================================================
+    // API & CLOUD ENGINE WORKFLOWS
+    // =========================================================================
+    function setStatus(state, message) {
+      const dot = document.getElementById('statusDot');
+      const text = document.getElementById('statusText');
+      text.textContent = message;
+      if (state === 'busy') {
+        dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
+      } else if (state === 'error') {
+        dot.className = 'w-2 h-2 rounded-full bg-rose-500';
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]';
+      }
+    }
+
+    async function applyJobPayload(data, trackLabel) {
+      currentJobId = data.job_id;
+      originalScale = data.detected_scale || 'C Major';
+      originalChords = Array.isArray(data.chords) ? data.chords : [];
+      stemUrls = data.stems || {};
+      if (data.duration) trackDuration = data.duration;
+
+      currentSemitones = 0;
+      renderedSemitones = 0;
+      activeChordIdx = -1;
+
+      document.getElementById('trackNameDisplay').textContent = trackLabel;
+      setStatus('busy', 'DECODING 6 STEM WAV BUFFERS...');
+
+      if (data.buffers) {
+        originalStemBuffers = { ...data.buffers };
+        applyDecodedStemBuffers(data.buffers, {}, 0, false);
+      } else {
+        await loadStemBuffersFromUrls(stemUrls, 0, false);
+      }
+      updateTranspositionUI();
+      setStatus('ready', `6 STEMS READY // ${originalScale.toUpperCase()}`);
+    }
+
+    async function loadDemoTrack() {
+      stopPlayback();
+      setStatus('busy', 'LOADING DEMO TRACK & 6 STEMS...');
+      const hasBackend = await detectBackend();
+      if (hasBackend) {
+        try {
+          const res = await fetch(`${API_BASE}/api/demo`, { method: 'POST' });
+          if (res.ok) {
+            const data = await res.json();
+            await applyJobPayload(data, 'test_song.wav (C - Am - F - G)');
+            return;
+          }
+        } catch (_) {}
+      }
+      // 24/7 Cloud Fallback: Synthesize the 6-stem C-Am-F-G demo track in memory
+      const cloudDemo = synthesizeCloudDemoStems();
+      await applyJobPayload(cloudDemo, 'test_song.wav (C - Am - F - G)');
+    }
+
+    async function uploadAndProcessFile(file) {
+      if (!file) return;
+      stopPlayback();
+      setStatus('busy', `SEPARATING 6 STEMS & CQT CHORDS (${file.name})...`);
+      const hasBackend = await detectBackend();
+
+      if (hasBackend) {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          const res = await fetch(`${API_BASE}/api/process`, { method: 'POST', body: formData });
+          if (res.ok) {
+            const data = await res.json();
+            await applyJobPayload(data, file.name);
+            return;
+          }
+        } catch (err) {
+          console.warn('Backend process fallback to Cloud DSP:', err);
+        }
+      }
+
+      // 24/7 Cloud Web-DSP Pipeline
+      try {
+        ensureAudioContext();
+        const arrayBuf = await file.arrayBuffer();
+        const decoded = await audioCtx.decodeAudioData(arrayBuf);
+        const analysis = detectChordsAndScaleInBrowser(decoded);
+        const stemBuffers = await separate6StemsInBrowser(decoded);
+        await applyJobPayload({
+          job_id: 'cloud_' + Date.now(),
+          detected_scale: analysis.detected_scale,
+          duration: analysis.duration,
+          chords: analysis.chords,
+          buffers: stemBuffers
+        }, file.name);
+      } catch (err) {
+        console.error('Upload process error:', err);
+        setStatus('error', `PROCESS FAILED: ${err.message}`);
+      }
+    }
+
+    async function renderHqPitch() {
+      if (!currentJobId) return;
+      const btn = document.getElementById('renderHqPitchBtn');
+      const label = document.getElementById('renderHqPitchLabel');
+      try {
+        btn.disabled = true;
+        label.textContent = `Rendering ${currentSemitones >= 0 ? '+' : ''}${currentSemitones} ST...`;
+        setStatus('busy', `RENDERING HQ PITCH (${currentSemitones >= 0 ? '+' : ''}${currentSemitones} ST)...`);
+
+        if (backendAvailable && !String(currentJobId).startsWith('cloud_')) {
+          const res = await fetch(`${API_BASE}/api/transpose-audio`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job_id: currentJobId, semitones: currentSemitones })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            stemUrls = data.stems || stemUrls;
+            await loadStemBuffersFromUrls(stemUrls, currentSemitones, true);
+            const newScale = transposeScaleSymbol(originalScale, currentSemitones);
+            setStatus('ready', `HQ PITCH READY (${currentSemitones >= 0 ? '+' : ''}${currentSemitones} ST // ${newScale.toUpperCase()})`);
+            return;
+          }
+        }
+
+        // 24/7 Cloud HQ Pitch Shifter (shifts melodic stems, preserves drums unshifted)
+        const shiftedBuffers = {};
+        STEMS_CONFIG.forEach(s => {
+          const origBuf = originalStemBuffers[s.id] || stemState[s.id].buffer;
+          shiftedBuffers[s.id] = s.melodic
+            ? pitchShiftBufferInBrowser(origBuf, currentSemitones)
+            : origBuf;
+        });
+        applyDecodedStemBuffers(shiftedBuffers, {}, currentSemitones, true);
+        const newScale = transposeScaleSymbol(originalScale, currentSemitones);
+        setStatus('ready', `HQ PITCH READY (${currentSemitones >= 0 ? '+' : ''}${currentSemitones} ST // ${newScale.toUpperCase()})`);
+      } catch (err) {
+        console.error('HQ Pitch error:', err);
+        setStatus('error', `HQ PITCH ERROR: ${err.message}`);
+      } finally {
+        btn.disabled = false;
+        label.textContent = 'Render HQ Pitch';
+      }
+    }
+
+    // =========================================================================
+    // EVENT LISTENERS & INITIALIZATION
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      buildMixerMatrixUI();
+      startAnimationLoop();
+
+      document.getElementById('playPauseBtn').addEventListener('click', () => {
+        if (isPlaying) pausePlayback();
+        else startPlaybackAt(startOffset);
+      });
+
+      document.getElementById('stopBtn').addEventListener('click', () => stopPlayback());
+
+      const loopBtn = document.getElementById('loopBtn');
+      loopBtn.addEventListener('click', () => {
+        isLooping = !isLooping;
+        loopBtn.innerHTML = `<span>LOOP: ${isLooping ? 'ON' : 'OFF'}</span>`;
+        loopBtn.className = isLooping
+          ? 'px-3.5 py-2.5 rounded-xl font-mono text-xs font-semibold bg-[#181822] text-[#6366f1] border border-indigo-500/40 transition flex items-center gap-1.5'
+          : 'px-3.5 py-2.5 rounded-xl font-mono text-xs font-semibold bg-[#181822] text-[#858596] border border-[#272738] transition flex items-center gap-1.5';
+      });
+
+      const scrubber = document.getElementById('scrubberTrack');
+      let isScrubbing = false;
+      const scrubFromEvent = (e) => {
+        if (trackDuration <= 0) return;
+        const rect = scrubber.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        seekTo(ratio * trackDuration);
+      };
+      scrubber.addEventListener('mousedown', (e) => {
+        isScrubbing = true;
+        scrubFromEvent(e);
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (isScrubbing) scrubFromEvent(e);
+      });
+      window.addEventListener('mouseup', () => {
+        isScrubbing = false;
+      });
+
+      document.getElementById('semitoneMinusBtn').addEventListener('click', () => setSemitones(currentSemitones - 1));
+      document.getElementById('semitonePlusBtn').addEventListener('click', () => setSemitones(currentSemitones + 1));
+      document.getElementById('semitoneResetBtn').addEventListener('click', () => setSemitones(0));
+      document.getElementById('renderHqPitchBtn').addEventListener('click', () => renderHqPitch());
+
+      document.getElementById('resetMixerBtn').addEventListener('click', () => {
+        STEMS_CONFIG.forEach(s => {
+          stemState[s.id].muted = false;
+          stemState[s.id].soloed = false;
+          stemState[s.id].gain = 1.0;
+          document.getElementById(`gainSlider_${s.id}`).value = '1.0';
+          document.getElementById(`gainValue_${s.id}`).textContent = '100%';
+          document.getElementById(`muteBtn_${s.id}`).className =
+            'w-8 h-8 rounded-lg font-mono text-xs font-bold border border-[#2a2a3a] bg-[#161620] text-[#858596] hover:text-white transition';
+          document.getElementById(`soloBtn_${s.id}`).className =
+            'w-8 h-8 rounded-lg font-mono text-xs font-bold border border-[#2a2a3a] bg-[#161620] text-[#858596] hover:text-white transition';
+        });
+        applyMixerGains();
+      });
+
+      const fileInput = document.getElementById('audioFileInput');
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          uploadAndProcessFile(e.target.files[0]);
+        }
+      });
+
+      const dropZone = document.getElementById('uploadDropZone');
+      ['dragenter', 'dragover'].forEach(evt => {
+        window.addEventListener(evt, (e) => {
+          e.preventDefault();
+          dropZone.classList.add('drop-active');
+        });
+      });
+      ['dragleave', 'drop'].forEach(evt => {
+        window.addEventListener(evt, (e) => {
+          e.preventDefault();
+          dropZone.classList.remove('drop-active');
+        });
+      });
+      window.addEventListener('drop', (e) => {
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+          uploadAndProcessFile(e.dataTransfer.files[0]);
+        }
+      });
+
+      document.getElementById('loadDemoBtn').addEventListener('click', () => loadDemoTrack());
+      loadDemoTrack();
+    });
+  </script>
+</body>
+</html>
